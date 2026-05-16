@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EVO Set — Walkable Preview</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+
+    <!-- HUD: Top Bar -->
+    <div id="hud-top">
+      <div id="logo">EVO SET <span>PREVIEW</span></div>
+      <div id="view-toggle">
+        <button id="btn-fpv" class="active">FPV</button>
+        <button id="btn-tpv">TPV</button>
+      </div>
+    </div>
+
+    <!-- Section Jump List -->
+    <div id="section-list">
+      <div class="section-list-title">SECTIONS</div>
+      <button class="section-btn" data-section="mainStage">🎤 Main Stage</button>
+      <button class="section-btn" data-section="reception">🪧 Reception</button>
+      <button class="section-btn" data-section="controlRoom">🎛 Control Room</button>
+      <button class="section-btn" data-section="gameArea">🎮 Game Area</button>
+    </div>
+
+    <!-- Section Info Popup -->
+    <div id="section-popup">
+      <div id="popup-tag"></div>
+      <div id="popup-title"></div>
+      <div id="popup-desc"></div>
+    </div>
+
+    <!-- Controls Legend -->
+    <div id="controls-hint">
+      <span>WASD / ↑↓←→ Move</span>
+      <span>Shift Run</span>
+      <span>Mouse Look</span>
+      <span>Click to lock</span>
+      <span>C — Free Look</span>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+      <div id="loading-inner">
+        <div id="loading-logo">EVO <span>SET</span></div>
+        <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
+        <div id="loading-label">Loading scene...</div>
+      </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
