@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EVO Set — Walkable Preview</title>
+    <title>Kantanka Funeral Grounds — Walkable Layout</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -11,20 +11,23 @@
 
     <!-- HUD: Top Bar -->
     <div id="hud-top">
-      <div id="logo">EVO SET <span>PREVIEW</span></div>
+      <div id="logo">KANTANKA<span>Funeral</span> <span>GROUNDS</span></div>
       <div id="view-toggle">
-        <button id="btn-fpv" class="active">FPV</button>
-        <button id="btn-tpv">TPV</button>
+        <button id="btn-fpv">FPV</button>
+        <button id="btn-tpv" class="active">TPV</button>
       </div>
     </div>
 
     <!-- Section Jump List -->
     <div id="section-list">
       <div class="section-list-title">SECTIONS</div>
-      <button class="section-btn" data-section="mainStage">🎤 Main Stage</button>
-      <button class="section-btn" data-section="reception">🪧 Reception</button>
-      <button class="section-btn" data-section="controlRoom">🎛 Control Room</button>
-      <button class="section-btn" data-section="gameArea">🎮 Game Area</button>
+      <button class="section-btn" data-section="entrance">🚪 Entrance</button>
+      
+      <button class="section-btn" data-section="membersTent">⛺ Members Tent</button>
+      <button class="section-btn" data-section="specialGuestsNorth">⭐ Special Guests (N)</button>
+      <button class="section-btn" data-section="specialGuestsSouth">⭐ Special Guests (S)</button>
+      <button class="section-btn" data-section="papasDecor">🌹 Papa's Decor</button>
+      <button class="section-btn" data-section="papasThrone">👑 Papa's Throne</button>
     </div>
 
     <!-- Section Info Popup -->
@@ -36,7 +39,7 @@
 
     <!-- Controls Legend -->
     <div id="controls-hint">
-      <span>WASD / ↑↓←→ Move</span>
+      <span>WASD Move</span>
       <span>Shift Run</span>
       <span>Mouse Look</span>
       <span>Click to lock</span>
@@ -45,8 +48,13 @@
 
     <!-- Loading Screen -->
     <div id="loading-screen">
+      <div id="loading-image-wrap">
+        <img id="loading-image" src="/SafoNeverDies.jpg" alt="Apostle Kwadwo Safo Kantanka" />
+      </div>
       <div id="loading-inner">
-        <div id="loading-logo">EVO <span>SET</span></div>
+        <div id="loading-logo">KANTANKA<span>Funeral</span> <span>GROUNDS</span></div>
+        <div id="loading-subtitle">In Loving Memory of Apostle Kwadwo Safo Kantanka</div>
+        <div id="loading-hashtag">#SAFOneverDies</div>
         <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
         <div id="loading-label">Loading scene...</div>
       </div>

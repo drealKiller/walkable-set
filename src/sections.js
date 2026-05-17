@@ -1,55 +1,65 @@
 import * as THREE from 'three';
 
-// ── Section Definitions ──────────────────────────────────────────────────────
-// Adjust min/max XZ coords after loading your model.
-// Y range covers floor to ceiling (0 to 4 is safe default).
-// spawnPoint is where the character teleports when you click the section button.
-//
-// HOW TO CALIBRATE:
-//   1. Run the app, open browser console
-//   2. Walk to each section corner and check the position logged in console
-//   3. Update min/max values below to match
-
 export const SECTIONS = {
-  mainStage: {
-    label:      'Main Stage',
-    tag:        'SECTION 01',
-    emoji:      '🎤',
-    color:      '#ff4d4d',
-    description: 'The main presentation area featuring the large backdrop screen, sponsor wall, and two presenter chairs. Primary content delivery zone.',
-    min: new THREE.Vector3(-6,  0, -8),
-    max: new THREE.Vector3( 3,  4, -1),
-    spawnPoint: new THREE.Vector3(-1.5, 0, -3),
+  entrance: {
+    label:       'Entrance',
+    tag:         'SECTION 01',
+    emoji:       '🚪',
+    color:       '#f5c518',
+    description: 'The main entrance to the funeral grounds. Guests are received and directed from this point.',
+    min: new THREE.Vector3(-7,  0,  7),
+    max: new THREE.Vector3(10,  4, 14),
+    spawnPoint: new THREE.Vector3(1, 0, 10),
   },
-  reception: {
-    label:      'Reception',
-    tag:        'SECTION 02',
-    emoji:      '🪧',
-    color:      '#ff8c42',
-    description: 'The reception and check-in desk. Visitor entry point with branding displays and staff counter.',
-    min: new THREE.Vector3( 1,  0, -4),
-    max: new THREE.Vector3( 5,  4,  0),
-    spawnPoint: new THREE.Vector3( 2.5, 0, -2),
+  membersTent: {
+    label:       'Members Tent',
+    tag:         'SECTION 02',
+    emoji:       '⛺',
+    color:       '#f0f0f0',
+    description: 'Seating area for church members and congregation.',
+    min: new THREE.Vector3(-50,  0, 15),
+    max: new THREE.Vector3( 52,  4, 45),
+    spawnPoint: new THREE.Vector3(1, 0, 30),
   },
-  controlRoom: {
-    label:      'Control Room',
-    tag:        'SECTION 03',
-    emoji:      '🎛',
-    color:      '#00e5ff',
-    description: 'The enclosed HAWK.GG control and broadcast room. Houses technical equipment and provides a private meeting space.',
-    min: new THREE.Vector3( 4,  0, -8),
-    max: new THREE.Vector3(10,  4,  1),
-    spawnPoint: new THREE.Vector3( 7,  0, -4),
+  papasDecor: {
+    label:       "Papa's Decor",
+    tag:         'SECTION 03',
+    emoji:       '🌹',
+    color:       '#00e5ff',
+    description: 'The central decorative display in honour of Apostle Kwadwo Safo Kantanka. Floral arrangements and tribute pieces.',
+    min: new THREE.Vector3(-5,  0, 75),
+    max: new THREE.Vector3( 8,  4, 105),
+    spawnPoint: new THREE.Vector3(1, 0, 90),
   },
-  gameArea: {
-    label:      'Game Area',
-    tag:        'SECTION 04',
-    emoji:      '🎮',
-    color:      '#f0f0f0',
-    description: 'The interactive gaming zone with PC stations, monitor displays, and demo setups. Public engagement and hands-on experience area.',
-    min: new THREE.Vector3(-6,  0,  0),
-    max: new THREE.Vector3( 5,  4,  7),
-    spawnPoint: new THREE.Vector3(-1,  0,  3),
+  specialGuestsNorth: {
+    label:       'Special Guests (North)',
+    tag:         'SECTION 04',
+    emoji:       '⭐',
+    color:       '#a78bfa',
+    description: 'Reserved seating for special guests and dignitaries — north area.',
+    min: new THREE.Vector3(-4,  0, -10),
+    max: new THREE.Vector3( 2,  4,  -3),
+    spawnPoint: new THREE.Vector3(-1, 0, -6),
+  },
+  specialGuestsSouth: {
+    label:       'Special Guests (South)',
+    tag:         'SECTION 05',
+    emoji:       '⭐',
+    color:       '#a78bfa',
+    description: 'Reserved seating for special guests and dignitaries — south area.',
+    min: new THREE.Vector3(-4,  0,  3),
+    max: new THREE.Vector3( 2,  4, 10),
+    spawnPoint: new THREE.Vector3(-1, 0, 6),
+  },
+  papasThrone: {
+    label:       "Papa's Throne",
+    tag:         'SECTION 06',
+    emoji:       '👑',
+    color:       '#f97316',
+    description: "The ceremonial throne and resting place of Apostle Kwadwo Safo Kantanka — Ghana's pioneering inventor and founder of Kantanka Group.",
+    min: new THREE.Vector3(-14, 0, -5),
+    max: new THREE.Vector3(-4,  4,  5),
+    spawnPoint: new THREE.Vector3(-9, 0, 0),
   },
 };
 
@@ -73,7 +83,7 @@ export class SectionManager {
     this.buttons.forEach((btn) => {
       btn.addEventListener('click', () => {
         const key = btn.dataset.section;
-        this.onEnter(key); // triggers teleport
+        this.onEnter(key);
       });
     });
   }
@@ -94,7 +104,7 @@ export class SectionManager {
       if (found) {
         this._showPopup(found);
         this._highlightButton(found);
-        if (this.onEnter) this.onEnter(found, false); // false = proximity trigger, not teleport
+        if (this.onEnter) this.onEnter(found, false);
       } else {
         this._hidePopup();
         this._highlightButton(null);

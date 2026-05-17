@@ -24,7 +24,7 @@ export class CharacterController {
     this.velocity  = new THREE.Vector3();
     this.yaw       = 0;   // character + camera facing direction
     this.pitch     = 0;   // FPV vertical look
-    this.isFPV     = true;
+    this.isFPV     = false;
     this.freeLook  = false; // C key toggle
     this.isLoaded  = false;
     this.keys      = {};
@@ -87,8 +87,8 @@ export class CharacterController {
 
           this._playNamed('idle');
 
-          // FPV: hide mesh, set camera at head
-          this.model.traverse(c => { if (c.isMesh) c.visible = false; });
+         // TPV: show mesh, set camera behind character
+          this.model.traverse(c => { if (c.isMesh) c.visible = true; });
           this.yaw = 0; this.pitch = 0;
           this._applyLockedCamera();
 
@@ -127,8 +127,8 @@ export class CharacterController {
     // Mouse look — only in locked camera mode
     document.addEventListener('mousemove', (e) => {
       if (this.freeLook || !this._pointerLocked) return;
-      this.yaw   -= e.movementX * 0.0022;
-      this.pitch -= e.movementY * 0.0022;
+      this.yaw   += e.movementX * 0.0022;
+      this.pitch += e.movementY * 0.0022;
       this.pitch  = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
     });
   }
@@ -261,9 +261,9 @@ export class CharacterController {
     }
 
    const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
-const right   = new THREE.Vector3( Math.cos(yaw), 0, -Math.sin(yaw));
+    const right   = new THREE.Vector3( Math.cos(yaw), 0, -Math.sin(yaw));
 
-    console.log('yaw:', this.yaw, 'forward:', forward, 'right:', right);
+    
     const moveDir = new THREE.Vector3();
     if (this.keys['KeyS'] || this.keys['ArrowUp'])    moveDir.add(forward);
     if (this.keys['KeyW'] || this.keys['ArrowDown'])  moveDir.sub(forward);
