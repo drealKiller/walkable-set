@@ -80,6 +80,15 @@ function setProgress(pct, label) {
 let character;
 let sectionManager;
 
+// ── Background Music ──────────────────────────────────────────────────────────
+const audio = new Audio('/Lucky Dube - reggae strong.mp3');
+audio.loop   = true;
+audio.volume = 0.4; // 0.0 to 1.0
+audio.play().catch(() => {
+  // Browser blocks autoplay until user interacts — start on first click
+  document.addEventListener('click', () => audio.play(), { once: true });
+});
+
 async function init() {
   setProgress(6, 'Loading grounds...');
 
