@@ -258,3 +258,26 @@ canvas#canvas {
   font-size: 12px; letter-spacing: 3px;
   color: rgba(255,255,255,0.4);
 }
+
+#music-controls {
+  pointer-events: all;
+  display: flex; gap: 4px;
+  background: rgba(0,0,0,0.8);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+  margin-left: 8px;
+}
+
+#music-controls button {
+  font-size: 14px;
+  padding: 4px 10px;
+  border: none; border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#music-controls button:hover {
+  background: rgba(192,57,43,0.2);
+}

@@ -143,13 +143,65 @@ function setProgress(pct, label) {
 let character;
 let sectionManager;
 
-// ── Background Music ──────────────────────────────────────────────────────────
-const audio = new Audio('/Lucky Dube - reggae strong.mp3');
-audio.loop   = true;
-audio.volume = 0.4;
-audio.play().catch(() => {
-  // Browser blocks autoplay until user interacts — start on first click
-  document.addEventListener('click', () => audio.play(), { once: true });
+// ── Music ─────────────────────────────────────────────────────────────────────
+const TRACKS = [
+  '/music1.mp3',
+  '/music2.mp3',
+  //'/music3.mp3',
+  // add more tracks here
+];
+
+let trackIndex = 0;
+let isMuted    = false;
+const audio    = new Audio(TRACKS[trackIndex]);
+audio.loop     = false;
+audio.volume   = 0.4;
+
+// Auto advance to next track when one ends
+audio.addEventListener('ended', () => {
+  trackIndex = (trackIndex + 1) % TRACKS.length;
+  audio.src  = TRACKS[trackIndex];
+  audio.play();
+});
+
+const startAudio = () => {
+  audio.play();
+  window.removeEventListener('keydown', startAudio);
+  window.removeEventListener('click', startAudio);
+};
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM') {
+    isMuted     = !isMuted;
+    audio.muted = isMuted;
+    document.getElementById('btn-music').textContent = isMuted ? '🔇' : '🔊';
+  }
+});
+window.addEventListener('keydown', startAudio);
+window.addEventListener('click', startAudio);
+
+// Toggle mute
+document.getElementById('btn-music').addEventListener('click', (e) => {
+  e.stopPropagation();
+  isMuted      = !isMuted;
+  audio.muted  = isMuted;
+  document.getElementById('btn-music').textContent = isMuted ? '🔇' : '🔊';
+});
+
+// Previous track
+document.getElementById('btn-prev').addEventListener('click', (e) => {
+  e.stopPropagation();
+  trackIndex = (trackIndex - 1 + TRACKS.length) % TRACKS.length;
+  audio.src  = TRACKS[trackIndex];
+  audio.play();
+});
+
+// Next track
+document.getElementById('btn-next').addEventListener('click', (e) => {
+  e.stopPropagation();
+  trackIndex = (trackIndex + 1) % TRACKS.length;
+  audio.src  = TRACKS[trackIndex];
+  audio.play();
 });
 
 async function init() {

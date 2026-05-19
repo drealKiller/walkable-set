@@ -287,13 +287,37 @@ export class CharacterController {
 
     const isMoving = moveDir.lengthSq() > 0;
 
-    // Gravity
+    // Ground detection — raycast downward to follow slopes and stairs
+const groundOrigin = this.model.position.clone();
+groundOrigin.y += 1; // start ray slightly above feet
+this.raycaster.set(groundOrigin, new THREE.Vector3(0, -1, 0));
+this.raycaster.far = 2.5;
+const groundHits = this.raycaster.intersectObjects(this.colliderMeshes, true);
+
+if (groundHits.length > 0) {
+  const groundY = groundHits[0].point.y;
+  if (this.model.position.y < groundY) {
+    // Snap up to ground (climbing slope/stair)
+    this.model.position.y = groundY;
+    this.velocity.y = 0;
+  } else {
+    // Apply gravity when airborne
     this.velocity.y += GRAVITY * delta;
     this.model.position.y += this.velocity.y * delta;
-    if (this.model.position.y < 0) {
-      this.model.position.y = 0;
+    if (this.model.position.y < groundY) {
+      this.model.position.y = groundY;
       this.velocity.y = 0;
     }
+  }
+} else {
+  // No ground detected — fall with gravity, floor clamp at Y=0
+  this.velocity.y += GRAVITY * delta;
+  this.model.position.y += this.velocity.y * delta;
+  if (this.model.position.y < 0) {
+    this.model.position.y = 0;
+    this.velocity.y = 0;
+  }
+}
 
     // Horizontal movement + collision sliding
     if (isMoving) {
