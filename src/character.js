@@ -105,15 +105,23 @@ export class CharacterController {
 
   // ── Input ─────────────────────────────────────────────────────────────
   _setupInput() {
-    window.addEventListener('keydown', (e) => {
-      this.keys[e.code] = true;
+   window.addEventListener('keydown', (e) => {
+  this.keys[e.code] = true;
 
-      // C — toggle free look on/off
-      if (e.code === 'KeyC') {
-        this.freeLook = !this.freeLook;
-        this._applyFreeLookState();
-      }
-    });
+  // C — toggle free look
+  if (e.code === 'KeyC') {
+    this.freeLook = !this.freeLook;
+    this._applyFreeLookState();
+  }
+
+  // V — toggle FPV / TPV
+  if (e.code === 'KeyV') {
+    const toFPV = !this.isFPV;
+    this.setFPV(toFPV);
+    document.getElementById('btn-fpv').classList.toggle('active', toFPV);
+    document.getElementById('btn-tpv').classList.toggle('active', !toFPV);
+  }
+});
 
     window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
 
@@ -127,8 +135,8 @@ export class CharacterController {
     // Mouse look — only in locked camera mode
     document.addEventListener('mousemove', (e) => {
       if (this.freeLook || !this._pointerLocked) return;
-      this.yaw   += e.movementX * 0.0022;
-      this.pitch += e.movementY * 0.0022;
+      this.yaw   -= e.movementX * 0.0022;
+      this.pitch -= e.movementY * 0.0022;
       this.pitch  = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
     });
   }
@@ -171,18 +179,17 @@ export class CharacterController {
 
   // ── View toggle (FPV / TPV buttons) ───────────────────────────────────
   setFPV(val) {
-    this.isFPV = val;
-    if (this.model) {
-      // In FPV hide mesh (unless free look), in TPV always show
-      const showMesh = !val || this.freeLook;
-      this.model.traverse(c => { if (c.isMesh) c.visible = showMesh; });
-    }
-    if (!this.freeLook) {
-      // Re-apply locked camera for new view mode
-      this._applyLockedCamera();
-      if (!this._pointerLocked) this.renderer.domElement.requestPointerLock();
-    }
+  this.isFPV = val;
+  if (this.model) {
+    const showMesh = !val || this.freeLook;
+    this.model.traverse(c => { if (c.isMesh) c.visible = showMesh; });
   }
+  if (!this.freeLook) {
+    if (val) this.yaw += Math.PI; // flip to face forward when entering FPV
+    this._applyLockedCamera();
+    if (!this._pointerLocked) this.renderer.domElement.requestPointerLock();
+  }
+}
 
   // ── Teleport ──────────────────────────────────────────────────────────
   teleportTo(pos) {
