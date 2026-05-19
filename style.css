@@ -115,7 +115,7 @@ canvas#canvas {
 
 /* ── SECTION POPUP ── */
 #section-popup {
-  position: fixed; bottom: 60px; left: 50%;
+  position: fixed; bottom: 100px; left: 50%;
   transform: translateX(-50%) translateY(20px);
   background: var(--popup-bg);
   border: 1px solid var(--border);

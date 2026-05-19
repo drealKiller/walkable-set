@@ -272,10 +272,18 @@ export class CharacterController {
 
     
     const moveDir = new THREE.Vector3();
-    if (this.keys['KeyS'] || this.keys['ArrowDown'])    moveDir.add(forward);
-    if (this.keys['KeyW'] || this.keys['ArrowUp'])  moveDir.sub(forward);
-    if (this.keys['KeyD'] || this.keys['ArrowRight'])  moveDir.sub(right);
-    if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveDir.add(right);
+    if (this.isFPV) {
+      if (this.keys['KeyW'] || this.keys['ArrowUp'])    moveDir.add(forward);
+      if (this.keys['KeyS'] || this.keys['ArrowDown'])  moveDir.sub(forward);
+      if (this.keys['KeyA'] || this.keys['ArrowLeft'])  moveDir.sub(right);
+      if (this.keys['KeyD'] || this.keys['ArrowRight']) moveDir.add(right);
+} else {
+  
+      if (this.keys['KeyS'] || this.keys['ArrowUp'])    moveDir.add(forward);
+      if (this.keys['KeyW'] || this.keys['ArrowDown'])  moveDir.sub(forward);
+      if (this.keys['KeyD'] || this.keys['ArrowLeft'])  moveDir.sub(right);
+      if (this.keys['KeyA'] || this.keys['ArrowRight']) moveDir.add(right);
+}
 
     const isMoving = moveDir.lengthSq() > 0;
 
