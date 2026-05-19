@@ -156,7 +156,7 @@ canvas#canvas {
   position: fixed; bottom: 16px; left: 50%;
   transform: translateX(-50%);
   display: flex; gap: 16px;
-  background: rgba(0,0,0,0.75);
+  background: rgba(224, 106, 106, 0.75);
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 10px 28px;
