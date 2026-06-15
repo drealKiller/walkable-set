@@ -6,13 +6,21 @@ export function loadScene(renderer, onProgress) {
     const loader = new GLTFLoader();
     // colliderMeshes: array of actual Mesh objects for precise raycast collision
     const colliderMeshes = [];
-    let boothScene = null;
+    let boothScene    = null;
+    let colliderScene = null;
 
     let boothDone     = false;
     let collidersDone = false;
 
     function checkDone() {
-      if (boothDone && collidersDone) resolve({ boothScene, colliderMeshes });
+      if (!boothDone || !collidersDone) return;
+      // Parent the colliders to the booth now that BOTH are loaded — order-independent,
+      // so collision never silently vanishes when colliders win the load race.
+      if (colliderScene && boothScene) {
+        boothScene.add(colliderScene);
+        boothScene.updateMatrixWorld(true);  // bake world matrices for raycasting
+      }
+      resolve({ boothScene, colliderMeshes });
     }
 
     // Load booth visual
@@ -39,17 +47,15 @@ export function loadScene(renderer, onProgress) {
     loader.load(
       '/models/colliders.glb',
       (gltf) => {
-        const colScene = gltf.scene;
-        colScene.updateMatrixWorld(true);
-        colScene.traverse((child) => {
+        colliderScene = gltf.scene;
+        colliderScene.updateMatrixWorld(true);
+        colliderScene.traverse((child) => {
           if (child.isMesh) {
             // Invisible but present for raycasting
             child.material = new THREE.MeshBasicMaterial({ visible: false });
             colliderMeshes.push(child);
           }
         });
-        // Parent to boothScene so world matrices stay correct
-        if (boothScene) boothScene.add(colScene);
         onProgress(80);
         collidersDone = true;
         checkDone();

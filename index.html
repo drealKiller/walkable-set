@@ -3,34 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kantanka Funeral Grounds — Walkable Layout</title>
+    <title>Event Space — Walkable Layout</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <canvas id="canvas"></canvas>
 
     <!-- HUD: Top Bar -->
-    <div id="hud-top", id="music-controls">
-      <div id="logo">KANTANKA's <span>FUNERAL</span> <span>GROUNDS</span></div>
+    <div id="hud-top">
+      <div id="logo"><span></span> <span></span></div>
       <div id="view-toggle">
-        <button id="btn-fpv">FPV</button>
-        <button id="btn-tpv" class="active">TPV</button>
-        <button id="btn-prev">⏮</button>
-        <button id="btn-music">🔊</button>
-        <button id="btn-next">⏭</button>
+        <button id="btn-fpv" class="active">FPV</button>
+        <button id="btn-tpv">TPV</button>
+        <button id="btn-fx" class="active">FX</button>
       </div>
     </div>
 
     <!-- Section Jump List -->
     <div id="section-list">
       <div class="section-list-title">SECTIONS</div>
-      <button class="section-btn" data-section="entrance">🚪 Entrance</button>
-      
-      <button class="section-btn" data-section="membersTent">⛺ Members Tent</button>
-      <button class="section-btn" data-section="specialGuestsNorth">⭐ Special Guests (N)</button>
-      <button class="section-btn" data-section="specialGuestsSouth">⭐ Special Guests (S)</button>
-      <button class="section-btn" data-section="papasDecor">🌹 Papa's Decor</button>
-      <button class="section-btn" data-section="papasThrone">👑 Papa's Throne</button>
+      <!-- Section buttons cleared — add Event space buttons here:
+           <button class="section-btn" data-section="KEY">EMOJI Label</button>
+           (data-section must match a key in src/sections.js) -->
     </div>
 
     <!-- Section Info Popup -->
@@ -42,24 +36,18 @@
 
     <!-- Controls Legend -->
     <div id="controls-hint">
-      <span>W A S D or Arrow keys to Move</span>
-      <span>Hold Shift key to Run</span>
-      <span>Mouse to Look Around</span>
-      <span>Click on Screen to lock</span>
-      <span>Press C to turn on/off Free Look</span>
-      <span>V to switch between 1st or 3rd Person View</span>
-      <span>M to Mute/Unmute</span>
+      <span>W A S D / Arrows to Move</span>
+      <span>Hold Shift to Run</span>
+      <span>Click or Drag to Look</span>
+      <span>C for Free Look</span>
+      <span>V for 1st / 3rd Person</span>
+      <span>P or FX to toggle Post FX</span>
     </div>
 
     <!-- Loading Screen -->
     <div id="loading-screen">
-      <div id="loading-image-wrap">
-        <img id="loading-image" src="/SafoNeverDies.jpg" alt="Apostle Kwadwo Safo Kantanka" />
-      </div>
       <div id="loading-inner">
-        <div id="loading-logo">KANTANKA's <span>FUNERAL</span> <span>GROUNDS</span></div>
-        <div id="loading-subtitle">In Loving Memory of Apostle Kwadwo Safo Kantanka</div>
-        <div id="loading-hashtag">#SAFOneverDies</div>
+        <div id="loading-logo">EVENT <span>SPACE</span></div>
         <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
         <div id="loading-label">Loading scene...</div>
       </div>

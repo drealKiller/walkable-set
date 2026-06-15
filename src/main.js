@@ -1,11 +1,10 @@
 import * as THREE from 'three';
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
-import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { loadScene } from './scene.js';
 import { CharacterController } from './character.js';
@@ -17,7 +16,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled   = true;
-renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type      = THREE.PCFShadowMap;
 renderer.outputColorSpace    = THREE.SRGBColorSpace;
 renderer.toneMapping         = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.6;
@@ -30,8 +29,8 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 camera.position.set(0, 1.7, 0);
 
 // ── HDRI Sky ──────────────────────────────────────────────────────────────────
-const rgbeLoader = new RGBELoader();
-rgbeLoader.load('/sky2.hdr', (texture) => {
+const hdrLoader = new HDRLoader();
+hdrLoader.load('/sky2.hdr', (texture) => {
   texture.mapping   = THREE.EquirectangularReflectionMapping;
   scene.background  = texture;
   scene.environment = texture;
@@ -54,71 +53,64 @@ dirLight.shadow.camera.bottom = -15;
 scene.add(dirLight);
 
 // ── Post Processing ───────────────────────────────────────────────────────────
-const composer = new EffectComposer(renderer);
+// Every knob lives in POST so the look is trivial to tune. The whole chain can be
+// toggled at runtime with the FX button (or the P key) — see `postEnabled`.
+const POST = {
+  bloomStrength:  0.05,   // glow intensity on bright highlights
+  bloomRadius:    0.60,
+  bloomThreshold: 0.85,   // only HDR luminance above this blooms
+  saturation:     1.10,   // 1 = neutral
+  contrast:       1.05,   // 1 = neutral (gentle, around linear mid-grey)
+  vignette:       0.30,   // 0 = none → larger = darker corners
+};
 
-// 1 — Base scene render
+const composer = new EffectComposer(renderer);
+composer.setPixelRatio(renderer.getPixelRatio());
+
+// 1 — Base scene render (linear HDR)
 composer.addPass(new RenderPass(scene, camera));
 
-// 2 — Bloom: glow on moderately bright surfaces (gold trims, emissives, sky)
+// 2 — Bloom: soft glow on bright highlights only, before tone mapping
 const bloom = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.15,  // strength
-  0.15,   // radius
-  5   // threshold — fires on moderately bright surfaces (was 12, essentially off)
+  POST.bloomStrength, POST.bloomRadius, POST.bloomThreshold
 );
 composer.addPass(bloom);
 
-// 3 — FXAA: fast anti-aliasing, applied after bloom
-const fxaa = new ShaderPass(FXAAShader);
-fxaa.uniforms['resolution'].value.set(
-  1 / window.innerWidth,
-  1 / window.innerHeight
-);
-composer.addPass(fxaa);
-
-// 4 — Film grain: subtle cinematic texture (keep noise low or it looks cheap)
-const film = new FilmPass(
-  0.18,  // noise intensity
-  false  // grayscale: false = colour noise
-);
-composer.addPass(film);
-
-// 5 — Vignette + colour grade: custom ShaderPass
+// 3 — Colour grade + vignette: gentle and tasteful (no cheap film grain / heavy vignette)
 const gradePass = new ShaderPass({
   uniforms: {
     tDiffuse:   { value: null },
-    vignette:   { value: 0.55 },  // 0 = none, 1 = heavy
-    saturation: { value: 1.15 },  // 1 = neutral
-    contrast:   { value: 1.06 },
-    brightness: { value: 0.0 },   // additive lift
+    saturation: { value: POST.saturation },
+    contrast:   { value: POST.contrast },
+    vignette:   { value: POST.vignette },
   },
-  vertexShader: `
+  vertexShader: /* glsl */`
     varying vec2 vUv;
     void main() {
       vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }`,
-  fragmentShader: `
+  fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse;
-    uniform float vignette;
     uniform float saturation;
     uniform float contrast;
-    uniform float brightness;
+    uniform float vignette;
     varying vec2 vUv;
 
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
 
-      // Saturation
-      float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      c.rgb = mix(vec3(lum), c.rgb, saturation);
+      // Saturation, around perceptual luma
+      float luma = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      c.rgb = mix(vec3(luma), c.rgb, saturation);
 
-      // Contrast + brightness
-      c.rgb = (c.rgb - 0.5) * contrast + 0.5 + brightness;
+      // Gentle contrast around linear mid-grey so highlights don't blow out
+      c.rgb = (c.rgb - 0.18) * contrast + 0.18;
 
-      // Vignette
-      vec2 uv2 = vUv * (1.0 - vUv.yx);
-      float vig = pow(uv2.x * uv2.y * 15.0, vignette);
+      // Soft vignette
+      vec2 q = vUv * (1.0 - vUv.yx);
+      float vig = pow(q.x * q.y * 15.0, vignette);
       c.rgb *= clamp(vig, 0.0, 1.0);
 
       gl_FragColor = c;
@@ -126,8 +118,15 @@ const gradePass = new ShaderPass({
 });
 composer.addPass(gradePass);
 
-// 6 — OutputPass: colour space conversion — always last
+// 4 — SMAA: higher-quality anti-aliasing than FXAA
+composer.addPass(new SMAAPass());
+
+// 5 — OutputPass: ACES tone mapping + sRGB encode — always last
 composer.addPass(new OutputPass());
+
+// Whole-chain on/off. When off we render straight to screen (renderer keeps its
+// own ACES tone mapping + sRGB, so the image stays consistent — just without FX).
+let postEnabled = true;
 
 // ── Loading UI ────────────────────────────────────────────────────────────────
 const loadingScreen = document.getElementById('loading-screen');
@@ -142,67 +141,6 @@ function setProgress(pct, label) {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 let character;
 let sectionManager;
-
-// ── Music ─────────────────────────────────────────────────────────────────────
-const TRACKS = [
-  '/music1.mp3',
-  '/music2.mp3',
-  //'/music3.mp3',
-  // add more tracks here
-];
-
-let trackIndex = 0;
-let isMuted    = false;
-const audio    = new Audio(TRACKS[trackIndex]);
-audio.loop     = false;
-audio.volume   = 0.4;
-
-// Auto advance to next track when one ends
-audio.addEventListener('ended', () => {
-  trackIndex = (trackIndex + 1) % TRACKS.length;
-  audio.src  = TRACKS[trackIndex];
-  audio.play();
-});
-
-const startAudio = () => {
-  audio.play();
-  window.removeEventListener('keydown', startAudio);
-  window.removeEventListener('click', startAudio);
-};
-
-window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyM') {
-    isMuted     = !isMuted;
-    audio.muted = isMuted;
-    document.getElementById('btn-music').textContent = isMuted ? '🔇' : '🔊';
-  }
-});
-window.addEventListener('keydown', startAudio);
-window.addEventListener('click', startAudio);
-
-// Toggle mute
-document.getElementById('btn-music').addEventListener('click', (e) => {
-  e.stopPropagation();
-  isMuted      = !isMuted;
-  audio.muted  = isMuted;
-  document.getElementById('btn-music').textContent = isMuted ? '🔇' : '🔊';
-});
-
-// Previous track
-document.getElementById('btn-prev').addEventListener('click', (e) => {
-  e.stopPropagation();
-  trackIndex = (trackIndex - 1 + TRACKS.length) % TRACKS.length;
-  audio.src  = TRACKS[trackIndex];
-  audio.play();
-});
-
-// Next track
-document.getElementById('btn-next').addEventListener('click', (e) => {
-  e.stopPropagation();
-  trackIndex = (trackIndex + 1) % TRACKS.length;
-  audio.src  = TRACKS[trackIndex];
-  audio.play();
-});
 
 async function init() {
   setProgress(6, 'Loading grounds...');
@@ -250,36 +188,34 @@ document.getElementById('btn-tpv').addEventListener('click', () => {
   document.getElementById('btn-tpv').classList.add('active');
 });
 
+// ── Post-processing Toggle (FX button + P key) ──────────────────────────────────
+const btnFx = document.getElementById('btn-fx');
+function setPost(on) {
+  postEnabled = on;
+  btnFx.classList.toggle('active', on);
+}
+btnFx.addEventListener('click', (e) => { e.stopPropagation(); setPost(!postEnabled); });
+window.addEventListener('keydown', (e) => { if (e.code === 'KeyP') setPost(!postEnabled); });
+
 // ── Resize ────────────────────────────────────────────────────────────────────
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);
-  bloom.setSize(window.innerWidth, window.innerHeight);
-  fxaa.uniforms['resolution'].value.set(
-    1 / window.innerWidth,
-    1 / window.innerHeight
-  );
+  composer.setSize(window.innerWidth, window.innerHeight);   // resizes bloom + SMAA internally
 });
 
 // ── Animate ───────────────────────────────────────────────────────────────────
-const clock = new THREE.Clock();
+const timer = new THREE.Timer();
 
 function animate() {
   requestAnimationFrame(animate);
-  const delta = Math.min(clock.getDelta(), 0.05);
+  timer.update();
+  const delta = Math.min(timer.getDelta(), 0.05);
 
   if (character) {
     const pos = character.update(delta);
     if (pos && sectionManager) sectionManager.update(pos);
-
-    // Temporary — log position every 2 seconds
-    if (!window._lastLog || Date.now() - window._lastLog > 2000) {
-      const pos = character.getPosition();
-      console.log(`Position: x=${pos.x.toFixed(2)}, y=${pos.y.toFixed(2)}, z=${pos.z.toFixed(2)}`);
-      window._lastLog = Date.now();
-    }
 
     // Shadow camera follows player
     dirLight.position.set(pos.x + 5, pos.y + 10, pos.z + 5);
@@ -287,7 +223,8 @@ function animate() {
     dirLight.target.updateMatrixWorld();
   }
 
-  composer.render();
+  if (postEnabled) composer.render();
+  else             renderer.render(scene, camera);
 }
 
 // ── Go ────────────────────────────────────────────────────────────────────────
