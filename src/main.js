@@ -61,7 +61,7 @@ const POST = {
   bloomThreshold: 0.85,   // only HDR luminance above this blooms
   saturation:     1.10,   // 1 = neutral
   contrast:       1.05,   // 1 = neutral (gentle, around linear mid-grey)
-  vignette:       0.30,   // 0 = none → larger = darker corners
+  vignette:       0.10,   // 0 = none → larger = darker corners
 };
 
 const composer = new EffectComposer(renderer);

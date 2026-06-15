@@ -3,13 +3,15 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #000000;
-  --accent:     #c0392b;
-  --accent-gold:#d4a017;
-  --border:     rgba(192, 57, 43, 0.3);
+  /* rTracer-inspired dark / hi-vis theme */
+  --bg:         #0a0b0d;                /* near-black background */
+  --surface:    #15171a;                /* dark panel surface */
+  --accent:     #e2ff00;                /* neon yellow (primary, hi-vis) */
+  --accent-2:   #1ea672;                /* green (secondary / earned) */
+  --border:     #2a2c30;                /* subtle border */
   --text:       #ffffff;
-  --muted:      rgba(255, 255, 255, 0.5);
-  --popup-bg:   rgba(0, 0, 0, 0.88);
+  --muted:      #8b8e94;                /* subtle / secondary text */
+  --popup-bg:   rgba(8, 9, 12, 0.92);   /* dark overlay */
 }
 
 html, body {
@@ -32,7 +34,7 @@ canvas#canvas {
   height: 52px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(8,9,12,0.9) 0%, transparent 100%);
   z-index: 100;
   pointer-events: none;
 }
@@ -42,12 +44,12 @@ canvas#canvas {
   font-size: 18px; font-weight: 700; letter-spacing: 3px;
   color: #ffffff;
 }
-#logo span { color: var(--accent-gold); }
+#logo span { color: var(--accent); }
 
 #view-toggle {
   pointer-events: all;
   display: flex; gap: 4px;
-  background: rgba(0,0,0,0.8);
+  background: rgba(8,9,12,0.8);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 4px;
@@ -65,7 +67,7 @@ canvas#canvas {
 }
 #view-toggle button.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--bg);
 }
 
 /* ── SECTION LIST ── */
@@ -83,7 +85,7 @@ canvas#canvas {
 .section-list-title {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 11px; letter-spacing: 3px; font-weight: 600;
-  color: var(--accent-gold);
+  color: var(--accent);
   margin-bottom: 10px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -104,13 +106,13 @@ canvas#canvas {
   transition: all 0.2s;
 }
 .section-btn:hover {
-  background: rgba(192,57,43,0.15);
+  background: rgba(226,255,0,0.08);
   border-color: var(--border);
 }
 .section-btn.active {
-  background: rgba(192,57,43,0.22);
+  background: rgba(226,255,0,0.14);
   border-color: var(--accent);
-  color: var(--accent-gold);
+  color: var(--accent);
 }
 
 /* ── SECTION POPUP ── */
@@ -136,7 +138,7 @@ canvas#canvas {
 #popup-tag {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 10px; letter-spacing: 3px; font-weight: 600;
-  color: var(--accent-gold);
+  color: var(--accent);
   margin-bottom: 4px;
 }
 #popup-title {
@@ -156,7 +158,7 @@ canvas#canvas {
   position: fixed; bottom: 16px; left: 50%;
   transform: translateX(-50%);
   display: flex; gap: 16px;
-  background: rgba(0,0,0,0.75);
+  background: rgba(8,9,12,0.75);
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 10px 28px;
@@ -173,7 +175,7 @@ canvas#canvas {
 /* ── LOADING SCREEN ── */
 #loading-screen {
   position: fixed; inset: 0;
-  background: #000000;
+  background: var(--bg);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -205,7 +207,7 @@ canvas#canvas {
 
 #loading-bar-wrap {
   width: 300px; height: 2px;
-  background: rgba(192,57,43,0.2);
+  background: rgba(226,255,0,0.15);
   border-radius: 2px;
   margin: 0 auto 14px;
   overflow: hidden;
@@ -213,7 +215,7 @@ canvas#canvas {
 #loading-bar {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-gold));
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
   border-radius: 2px;
   transition: width 0.4s ease;
   box-shadow: 0 0 10px var(--accent);
