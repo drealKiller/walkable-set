@@ -116,7 +116,7 @@ export class CharacterController {
         (gltf) => {
           this.model = gltf.scene;
           this.model.traverse((child) => {
-            if (child.isMesh) child.castShadow = true;
+            if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
           });
           this.model.position.set(0, 0, 0);
           this.scene.add(this.model);

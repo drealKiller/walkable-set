@@ -5,6 +5,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { loadScene } from './scene.js';
 import { CharacterController } from './character.js';
@@ -40,17 +41,34 @@ hdrLoader.load('/sky2.hdr', (texture) => {
 const ambient = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambient);
 
+// Shadow tuning — all knobs in one place. In three 0.184 PCFShadowMap softens edges
+// via `radius`; `normalBias` is the primary fix for shadow acne / peter-panning.
+const SHADOW = {
+  mapSize:    4096,     // resolution (drop to 2048 if perf dips — re-rendered each frame as the light follows)
+  half:       12,       // follow-frustum half-extent (smaller = sharper texels)
+  radius:     3,        // PCF penumbra softness (raise for softer edges)
+  bias:       -0.0004,  // flat depth bias
+  normalBias: 0.02,     // world-normal offset (~2cm) — main acne / peter-panning control
+  near:       0.5,
+  far:        60,
+};
+
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(5, 10, 5);
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(2048, 2048);
-dirLight.shadow.camera.near   = 0.1;
-dirLight.shadow.camera.far    = 50;
-dirLight.shadow.camera.left   = -15;
-dirLight.shadow.camera.right  = 15;
-dirLight.shadow.camera.top    = 15;
-dirLight.shadow.camera.bottom = -15;
+dirLight.shadow.mapSize.set(SHADOW.mapSize, SHADOW.mapSize);
+dirLight.shadow.radius     = SHADOW.radius;
+dirLight.shadow.bias       = SHADOW.bias;
+dirLight.shadow.normalBias = SHADOW.normalBias;
+dirLight.shadow.camera.near   = SHADOW.near;
+dirLight.shadow.camera.far    = SHADOW.far;
+dirLight.shadow.camera.left   = -SHADOW.half;
+dirLight.shadow.camera.right  =  SHADOW.half;
+dirLight.shadow.camera.top    =  SHADOW.half;
+dirLight.shadow.camera.bottom = -SHADOW.half;
+dirLight.shadow.camera.updateProjectionMatrix();
 scene.add(dirLight);
+scene.add(dirLight.target);
 
 // ── Post Processing ───────────────────────────────────────────────────────────
 // Every knob lives in POST so the look is trivial to tune. The whole chain can be
@@ -64,20 +82,43 @@ const POST = {
   vignette:       0.10,   // 0 = none → larger = darker corners
 };
 
+// Ambient occlusion (contact shadows) — soft darkening in crevices and where objects
+// meet the ground. Runs inside the FX chain, so it's off when post FX is toggled off.
+const AO = {
+  radius:           0.5,   // world-space AO reach in metres (scene is ~metric)
+  distanceExponent: 1.0,   // falloff shaping
+  thickness:        1.0,
+  scale:            1.0,
+  blendIntensity:   1.0,   // how strongly AO multiplies into the image
+};
+
 const composer = new EffectComposer(renderer);
 composer.setPixelRatio(renderer.getPixelRatio());
 
 // 1 — Base scene render (linear HDR)
 composer.addPass(new RenderPass(scene, camera));
 
-// 2 — Bloom: soft glow on bright highlights only, before tone mapping
+// 2 — GTAO: ambient occlusion / contact shadows (linear HDR, before bloom)
+const gtao = new GTAOPass(scene, camera, window.innerWidth || 1, window.innerHeight || 1);
+gtao.output = GTAOPass.OUTPUT.Default;          // auto-blends AO over the scene colour
+gtao.blendIntensity = AO.blendIntensity;
+gtao.updateGtaoMaterial({
+  radius:            AO.radius,
+  distanceExponent:  AO.distanceExponent,
+  thickness:         AO.thickness,
+  scale:             AO.scale,
+  screenSpaceRadius: false,
+});
+composer.addPass(gtao);
+
+// 3 — Bloom: soft glow on bright highlights only, before tone mapping
 const bloom = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
   POST.bloomStrength, POST.bloomRadius, POST.bloomThreshold
 );
 composer.addPass(bloom);
 
-// 3 — Colour grade + vignette: gentle and tasteful (no cheap film grain / heavy vignette)
+// 4 — Colour grade + vignette: gentle and tasteful (no cheap film grain / heavy vignette)
 const gradePass = new ShaderPass({
   uniforms: {
     tDiffuse:   { value: null },
@@ -118,10 +159,10 @@ const gradePass = new ShaderPass({
 });
 composer.addPass(gradePass);
 
-// 4 — SMAA: higher-quality anti-aliasing than FXAA
+// 5 — SMAA: higher-quality anti-aliasing than FXAA
 composer.addPass(new SMAAPass());
 
-// 5 — OutputPass: ACES tone mapping + sRGB encode — always last
+// 6 — OutputPass: ACES tone mapping + sRGB encode — always last
 composer.addPass(new OutputPass());
 
 // Whole-chain on/off. When off we render straight to screen (renderer keeps its
@@ -203,6 +244,7 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer.setSize(window.innerWidth, window.innerHeight);   // resizes bloom + SMAA internally
+  gtao.setSize(window.innerWidth || 1, window.innerHeight || 1);
 });
 
 // ── Animate ───────────────────────────────────────────────────────────────────

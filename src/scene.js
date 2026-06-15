@@ -51,8 +51,11 @@ export function loadScene(renderer, onProgress) {
         colliderScene.updateMatrixWorld(true);
         colliderScene.traverse((child) => {
           if (child.isMesh) {
-            // Invisible but present for raycasting
+            // Hidden from every render pass (incl. the GTAO AO GBuffer) but still
+            // raycastable — three's Raycaster ignores `.visible`, so ground/wall
+            // collision rays against these meshes keep working.
             child.material = new THREE.MeshBasicMaterial({ visible: false });
+            child.visible = false;
             colliderMeshes.push(child);
           }
         });
