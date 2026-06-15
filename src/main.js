@@ -74,7 +74,7 @@ scene.add(dirLight.target);
 // Every knob lives in POST so the look is trivial to tune. The whole chain can be
 // toggled at runtime with the FX button (or the P key) — see `postEnabled`.
 const POST = {
-  bloomStrength:  0.05,   // glow intensity on bright highlights
+  bloomStrength:  0.02,   // glow intensity on bright highlights
   bloomRadius:    0.60,
   bloomThreshold: 0.85,   // only HDR luminance above this blooms
   saturation:     1.10,   // 1 = neutral
