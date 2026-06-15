@@ -169,7 +169,7 @@ async function init() {
 
   setTimeout(() => {
     loadingScreen.classList.add('hidden');
-  }, 3500);
+  }, 1000);
 
   requestAnimationFrame(animate);
 }
