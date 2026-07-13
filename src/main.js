@@ -14,11 +14,11 @@ import { SectionManager, SECTIONS } from './sections.js';
 // ── Renderer ──────────────────────────────────────────────────────────────────
 const canvas   = document.getElementById('canvas');
 // Touch / mobile devices: cap resolution and skip post-processing for performance.
-const IS_MOBILE = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const IS_MOBILE = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window) || /[?&]mobile\b/.test(location.search);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled   = true;
+renderer.shadowMap.enabled   = !IS_MOBILE;   // shadows off on mobile (big GPU saving)
 renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace    = THREE.SRGBColorSpace;
 renderer.toneMapping         = THREE.ACESFilmicToneMapping;

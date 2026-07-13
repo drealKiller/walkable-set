@@ -4,6 +4,9 @@ import { createGLTFLoader } from './loaders.js';
 export function loadScene(renderer, onProgress) {
   return new Promise((resolve) => {
     const loader = createGLTFLoader(renderer);   // Draco + KTX2 enabled
+    // On touch devices load the lighter booth (1024px textures) to cut GPU memory.
+    const isMobile = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window) || /[?&]mobile\b/.test(location.search);
+    const boothURL = isMobile ? '/models/booth.mobile.glb' : '/models/booth.glb';
     // colliderMeshes: array of actual Mesh objects for precise raycast collision
     const colliderMeshes = [];
     let boothScene = null;
@@ -17,7 +20,7 @@ export function loadScene(renderer, onProgress) {
 
     // Load booth visual
     loader.load(
-      '/models/booth.glb',
+      boothURL,
       (gltf) => {
         boothScene = gltf.scene;
         boothScene.traverse((child) => {
