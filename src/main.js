@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
-import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { loadScene } from './scene.js';
 import { CharacterController } from './character.js';
@@ -17,7 +17,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled   = true;
-renderer.shadowMap.type      = THREE.PCFShadowMap;
+renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace    = THREE.SRGBColorSpace;
 renderer.toneMapping         = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.6;
@@ -30,8 +30,8 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 camera.position.set(0, 1.7, 0);
 
 // ── HDRI Sky ──────────────────────────────────────────────────────────────────
-const hdrLoader = new HDRLoader();
-hdrLoader.load('/sky2.hdr', (texture) => {
+const rgbeLoader = new RGBELoader();
+rgbeLoader.load('/sky2.hdr', (texture) => {
   texture.mapping   = THREE.EquirectangularReflectionMapping;
   scene.background  = texture;
   scene.environment = texture;
@@ -41,117 +41,84 @@ hdrLoader.load('/sky2.hdr', (texture) => {
 const ambient = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambient);
 
-// Shadow tuning — all knobs in one place. In three 0.184 PCFShadowMap softens edges
-// via `radius`; `normalBias` is the primary fix for shadow acne / peter-panning.
-const SHADOW = {
-  mapSize:    4096,     // resolution (drop to 2048 if perf dips — re-rendered each frame as the light follows)
-  half:       12,       // follow-frustum half-extent (smaller = sharper texels)
-  radius:     3,        // PCF penumbra softness (raise for softer edges)
-  bias:       -0.0004,  // flat depth bias
-  normalBias: 0.02,     // world-normal offset (~2cm) — main acne / peter-panning control
-  near:       0.5,
-  far:        60,
-};
-
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(5, 10, 5);
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(SHADOW.mapSize, SHADOW.mapSize);
-dirLight.shadow.radius     = SHADOW.radius;
-dirLight.shadow.bias       = SHADOW.bias;
-dirLight.shadow.normalBias = SHADOW.normalBias;
-dirLight.shadow.camera.near   = SHADOW.near;
-dirLight.shadow.camera.far    = SHADOW.far;
-dirLight.shadow.camera.left   = -SHADOW.half;
-dirLight.shadow.camera.right  =  SHADOW.half;
-dirLight.shadow.camera.top    =  SHADOW.half;
-dirLight.shadow.camera.bottom = -SHADOW.half;
-dirLight.shadow.camera.updateProjectionMatrix();
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.near   = 0.1;
+dirLight.shadow.camera.far    = 50;
+dirLight.shadow.camera.left   = -15;
+dirLight.shadow.camera.right  = 15;
+dirLight.shadow.camera.top    = 15;
+dirLight.shadow.camera.bottom = -15;
 scene.add(dirLight);
-scene.add(dirLight.target);
 
 // ── Post Processing ───────────────────────────────────────────────────────────
-// Every knob lives in POST so the look is trivial to tune. The whole chain can be
-// toggled at runtime with the FX button (or the P key) — see `postEnabled`.
-const POST = {
-  bloomStrength:  0.02,   // glow intensity on bright highlights
-  bloomRadius:    0.60,
-  bloomThreshold: 0.85,   // only HDR luminance above this blooms
-  saturation:     1.10,   // 1 = neutral
-  contrast:       1.05,   // 1 = neutral (gentle, around linear mid-grey)
-  vignette:       0.10,   // 0 = none → larger = darker corners
-};
-
-// Ambient occlusion (contact shadows) — soft darkening in crevices and where objects
-// meet the ground. Runs inside the FX chain, so it's off when post FX is toggled off.
-const AO = {
-  radius:           0.5,   // world-space AO reach in metres (scene is ~metric)
-  distanceExponent: 1.0,   // falloff shaping
-  thickness:        1.0,
-  scale:            1.0,
-  blendIntensity:   1.0,   // how strongly AO multiplies into the image
-};
-
 const composer = new EffectComposer(renderer);
-composer.setPixelRatio(renderer.getPixelRatio());
 
-// 1 — Base scene render (linear HDR)
+// 1 — Base scene render
 composer.addPass(new RenderPass(scene, camera));
 
-// 2 — GTAO: ambient occlusion / contact shadows (linear HDR, before bloom)
-const gtao = new GTAOPass(scene, camera, window.innerWidth || 1, window.innerHeight || 1);
-gtao.output = GTAOPass.OUTPUT.Default;          // auto-blends AO over the scene colour
-gtao.blendIntensity = AO.blendIntensity;
-gtao.updateGtaoMaterial({
-  radius:            AO.radius,
-  distanceExponent:  AO.distanceExponent,
-  thickness:         AO.thickness,
-  scale:             AO.scale,
-  screenSpaceRadius: false,
-});
-composer.addPass(gtao);
-
-// 3 — Bloom: soft glow on bright highlights only, before tone mapping
+// 2 — Bloom: glow on moderately bright surfaces (gold trims, emissives, sky)
 const bloom = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  POST.bloomStrength, POST.bloomRadius, POST.bloomThreshold
+  0.15,  // strength
+  0.15,   // radius
+  5   // threshold — fires on moderately bright surfaces (was 12, essentially off)
 );
 composer.addPass(bloom);
 
-// 4 — Colour grade + vignette: gentle and tasteful (no cheap film grain / heavy vignette)
+// 3 — FXAA: fast anti-aliasing, applied after bloom
+const fxaa = new ShaderPass(FXAAShader);
+fxaa.uniforms['resolution'].value.set(
+  1 / window.innerWidth,
+  1 / window.innerHeight
+);
+composer.addPass(fxaa);
+
+// 4 — Film grain: subtle cinematic texture (keep noise low or it looks cheap)
+const film = new FilmPass(
+  0.18,  // noise intensity
+  false  // grayscale: false = colour noise
+);
+composer.addPass(film);
+
+// 5 — Vignette + colour grade: custom ShaderPass
 const gradePass = new ShaderPass({
   uniforms: {
     tDiffuse:   { value: null },
-    saturation: { value: POST.saturation },
-    contrast:   { value: POST.contrast },
-    vignette:   { value: POST.vignette },
+    vignette:   { value: 0.55 },  // 0 = none, 1 = heavy
+    saturation: { value: 1.15 },  // 1 = neutral
+    contrast:   { value: 1.06 },
+    brightness: { value: 0.0 },   // additive lift
   },
-  vertexShader: /* glsl */`
+  vertexShader: `
     varying vec2 vUv;
     void main() {
       vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }`,
-  fragmentShader: /* glsl */`
+  fragmentShader: `
     uniform sampler2D tDiffuse;
+    uniform float vignette;
     uniform float saturation;
     uniform float contrast;
-    uniform float vignette;
+    uniform float brightness;
     varying vec2 vUv;
 
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
 
-      // Saturation, around perceptual luma
-      float luma = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      c.rgb = mix(vec3(luma), c.rgb, saturation);
+      // Saturation
+      float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      c.rgb = mix(vec3(lum), c.rgb, saturation);
 
-      // Gentle contrast around linear mid-grey so highlights don't blow out
-      c.rgb = (c.rgb - 0.18) * contrast + 0.18;
+      // Contrast + brightness
+      c.rgb = (c.rgb - 0.5) * contrast + 0.5 + brightness;
 
-      // Soft vignette
-      vec2 q = vUv * (1.0 - vUv.yx);
-      float vig = pow(q.x * q.y * 15.0, vignette);
+      // Vignette
+      vec2 uv2 = vUv * (1.0 - vUv.yx);
+      float vig = pow(uv2.x * uv2.y * 15.0, vignette);
       c.rgb *= clamp(vig, 0.0, 1.0);
 
       gl_FragColor = c;
@@ -159,15 +126,8 @@ const gradePass = new ShaderPass({
 });
 composer.addPass(gradePass);
 
-// 5 — SMAA: higher-quality anti-aliasing than FXAA
-composer.addPass(new SMAAPass());
-
-// 6 — OutputPass: ACES tone mapping + sRGB encode — always last
+// 6 — OutputPass: colour space conversion — always last
 composer.addPass(new OutputPass());
-
-// Whole-chain on/off. When off we render straight to screen (renderer keeps its
-// own ACES tone mapping + sRGB, so the image stays consistent — just without FX).
-let postEnabled = true;
 
 // ── Loading UI ────────────────────────────────────────────────────────────────
 const loadingScreen = document.getElementById('loading-screen');
@@ -182,6 +142,67 @@ function setProgress(pct, label) {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 let character;
 let sectionManager;
+
+// ── Music ─────────────────────────────────────────────────────────────────────
+const TRACKS = [
+  '/music1.mp3',
+  '/music2.mp3',
+  //'/music3.mp3',
+  // add more tracks here
+];
+
+let trackIndex = 0;
+let isMuted    = false;
+const audio    = new Audio(TRACKS[trackIndex]);
+audio.loop     = false;
+audio.volume   = 0.4;
+
+// Auto advance to next track when one ends
+audio.addEventListener('ended', () => {
+  trackIndex = (trackIndex + 1) % TRACKS.length;
+  audio.src  = TRACKS[trackIndex];
+  audio.play();
+});
+
+const startAudio = () => {
+  audio.play();
+  window.removeEventListener('keydown', startAudio);
+  window.removeEventListener('click', startAudio);
+};
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM') {
+    isMuted     = !isMuted;
+    audio.muted = isMuted;
+    document.getElementById('btn-music').textContent = isMuted ? '🔇' : '🔊';
+  }
+});
+window.addEventListener('keydown', startAudio);
+window.addEventListener('click', startAudio);
+
+// Toggle mute
+document.getElementById('btn-music').addEventListener('click', (e) => {
+  e.stopPropagation();
+  isMuted      = !isMuted;
+  audio.muted  = isMuted;
+  document.getElementById('btn-music').textContent = isMuted ? '🔇' : '🔊';
+});
+
+// Previous track
+document.getElementById('btn-prev').addEventListener('click', (e) => {
+  e.stopPropagation();
+  trackIndex = (trackIndex - 1 + TRACKS.length) % TRACKS.length;
+  audio.src  = TRACKS[trackIndex];
+  audio.play();
+});
+
+// Next track
+document.getElementById('btn-next').addEventListener('click', (e) => {
+  e.stopPropagation();
+  trackIndex = (trackIndex + 1) % TRACKS.length;
+  audio.src  = TRACKS[trackIndex];
+  audio.play();
+});
 
 async function init() {
   setProgress(6, 'Loading grounds...');
@@ -210,7 +231,7 @@ async function init() {
 
   setTimeout(() => {
     loadingScreen.classList.add('hidden');
-  }, 1000);
+  }, 3500);
 
   requestAnimationFrame(animate);
 }
@@ -229,35 +250,36 @@ document.getElementById('btn-tpv').addEventListener('click', () => {
   document.getElementById('btn-tpv').classList.add('active');
 });
 
-// ── Post-processing Toggle (FX button + P key) ──────────────────────────────────
-const btnFx = document.getElementById('btn-fx');
-function setPost(on) {
-  postEnabled = on;
-  btnFx.classList.toggle('active', on);
-}
-btnFx.addEventListener('click', (e) => { e.stopPropagation(); setPost(!postEnabled); });
-window.addEventListener('keydown', (e) => { if (e.code === 'KeyP') setPost(!postEnabled); });
-
 // ── Resize ────────────────────────────────────────────────────────────────────
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);   // resizes bloom + SMAA internally
-  gtao.setSize(window.innerWidth || 1, window.innerHeight || 1);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  bloom.setSize(window.innerWidth, window.innerHeight);
+  fxaa.uniforms['resolution'].value.set(
+    1 / window.innerWidth,
+    1 / window.innerHeight
+  );
 });
 
 // ── Animate ───────────────────────────────────────────────────────────────────
-const timer = new THREE.Timer();
+const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
-  timer.update();
-  const delta = Math.min(timer.getDelta(), 0.05);
+  const delta = Math.min(clock.getDelta(), 0.05);
 
   if (character) {
     const pos = character.update(delta);
     if (pos && sectionManager) sectionManager.update(pos);
+
+    // Temporary — log position every 2 seconds
+    if (!window._lastLog || Date.now() - window._lastLog > 2000) {
+      const pos = character.getPosition();
+      console.log(`Position: x=${pos.x.toFixed(2)}, y=${pos.y.toFixed(2)}, z=${pos.z.toFixed(2)}`);
+      window._lastLog = Date.now();
+    }
 
     // Shadow camera follows player
     dirLight.position.set(pos.x + 5, pos.y + 10, pos.z + 5);
@@ -265,8 +287,7 @@ function animate() {
     dirLight.target.updateMatrixWorld();
   }
 
-  if (postEnabled) composer.render();
-  else             renderer.render(scene, camera);
+  composer.render();
 }
 
 // ── Go ────────────────────────────────────────────────────────────────────────
