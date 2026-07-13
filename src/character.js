@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createGLTFLoader } from './loaders.js';
 
 const WALK_SPEED    = 2.0;
 const RUN_SPEED     = 4.5;
@@ -8,6 +8,7 @@ const GRAVITY       = -12;
 const PLAYER_HEIGHT = 1.7;
 const PLAYER_RADIUS = 0.3;
 const RAY_LENGTH    = PLAYER_RADIUS + 0.05;
+const TOUCH_LOOK_SENS = 0.004;   // mobile drag-look sensitivity
 
 export class CharacterController {
   constructor(scene, camera, renderer, colliderMeshes) {
@@ -28,6 +29,8 @@ export class CharacterController {
     this.freeLook  = false; // C key toggle
     this.isLoaded  = false;
     this.keys      = {};
+    this.touchMove = { x: 0, y: 0 };   // mobile joystick (-1..1): x=strafe, y=forward (up = -1)
+    this._touchRun = false;
 
     this.collisionEnabled = false;
     setTimeout(() => { this.collisionEnabled = true; }, 1500);
@@ -50,12 +53,13 @@ export class CharacterController {
     });
 
     this._setupInput();
+    this._setupTouch();
   }
 
   // ── Load ──────────────────────────────────────────────────────────────
   load(onProgress) {
     return new Promise((resolve) => {
-      const loader = new GLTFLoader();
+      const loader = createGLTFLoader(this.renderer);   // Draco + KTX2 enabled
       loader.load(
         '/models/character.glb',
         (gltf) => {
@@ -138,6 +142,75 @@ export class CharacterController {
       this.yaw   -= e.movementX * 0.0022;
       this.pitch -= e.movementY * 0.0022;
       this.pitch  = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
+    });
+  }
+
+  // ── Touch controls (mobile) ────────────────────────────────────────────
+  // Left virtual joystick → analog movement; drag anywhere else → look around.
+  _setupTouch() {
+    const joy    = document.getElementById('joystick');
+    const knob   = document.getElementById('joystick-knob');
+    const runBtn = document.getElementById('btn-run');
+    const canvas = this.renderer.domElement;
+    if (!joy) return;
+
+    const JOY_MAX = 45, DEAD = 0.18;
+    let joyId = null, lookId = null, lookX = 0, lookY = 0, joyCx = 0, joyCy = 0;
+    const setKnob  = (x, y) => { knob.style.transform = `translate(${x}px, ${y}px)`; };
+    const resetJoy = () => { joyId = null; this.touchMove.x = 0; this.touchMove.y = 0; setKnob(0, 0); };
+
+    joy.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (joyId !== null) return;
+      const t = e.changedTouches[0];
+      joyId = t.identifier;
+      const r = joy.getBoundingClientRect();
+      joyCx = r.left + r.width / 2; joyCy = r.top + r.height / 2;
+    }, { passive: false });
+
+    // A touch that starts on the canvas (and isn't the joystick) drives look.
+    canvas.addEventListener('touchstart', (e) => {
+      for (const t of e.changedTouches) {
+        if (lookId === null && t.identifier !== joyId) { lookId = t.identifier; lookX = t.clientX; lookY = t.clientY; }
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      let handled = false;
+      for (const t of e.changedTouches) {
+        if (t.identifier === joyId) {
+          handled = true;
+          let dx = t.clientX - joyCx, dy = t.clientY - joyCy;
+          const len = Math.hypot(dx, dy);
+          if (len > JOY_MAX) { dx = dx / len * JOY_MAX; dy = dy / len * JOY_MAX; }
+          setKnob(dx, dy);
+          const nx = dx / JOY_MAX, ny = dy / JOY_MAX;
+          this.touchMove.x = Math.abs(nx) > DEAD ? nx : 0;
+          this.touchMove.y = Math.abs(ny) > DEAD ? ny : 0;
+        } else if (t.identifier === lookId) {
+          handled = true;
+          this.yaw   -= (t.clientX - lookX) * TOUCH_LOOK_SENS;
+          this.pitch -= (t.clientY - lookY) * TOUCH_LOOK_SENS;
+          this.pitch  = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
+          lookX = t.clientX; lookY = t.clientY;
+        }
+      }
+      if (handled) e.preventDefault();
+    }, { passive: false });
+
+    const end = (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === joyId)  resetJoy();
+        if (t.identifier === lookId) lookId = null;
+      }
+    };
+    window.addEventListener('touchend', end);
+    window.addEventListener('touchcancel', end);
+
+    if (runBtn) runBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._touchRun = !this._touchRun;
+      runBtn.classList.toggle('active', this._touchRun);
     });
   }
 
@@ -255,7 +328,7 @@ export class CharacterController {
 
   // ── Movement ──────────────────────────────────────────────────────────
   _applyMovement(delta) {
-    const isRunning = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
+    const isRunning = this.keys['ShiftLeft'] || this.keys['ShiftRight'] || this._touchRun;
     const speed     = isRunning ? RUN_SPEED : WALK_SPEED;
 
     // In free look mode, yaw comes from the orbit camera's azimuth
@@ -284,6 +357,13 @@ export class CharacterController {
       if (this.keys['KeyD'] || this.keys['ArrowRight'])  moveDir.sub(right);
       if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveDir.add(right);
 }
+
+    // Mobile joystick — analog, matches the per-view key mapping above
+    const tm = this.touchMove;
+    if (tm.x !== 0 || tm.y !== 0) {
+      if (this.isFPV) { moveDir.addScaledVector(forward, -tm.y); moveDir.addScaledVector(right,  tm.x); }
+      else            { moveDir.addScaledVector(forward,  tm.y); moveDir.addScaledVector(right, -tm.x); }
+    }
 
     const isMoving = moveDir.lengthSq() > 0;
 

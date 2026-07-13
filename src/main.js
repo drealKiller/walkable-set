@@ -13,8 +13,10 @@ import { SectionManager, SECTIONS } from './sections.js';
 
 // ── Renderer ──────────────────────────────────────────────────────────────────
 const canvas   = document.getElementById('canvas');
+// Touch / mobile devices: cap resolution and skip post-processing for performance.
+const IS_MOBILE = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled   = true;
 renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
@@ -274,20 +276,14 @@ function animate() {
     const pos = character.update(delta);
     if (pos && sectionManager) sectionManager.update(pos);
 
-    // Temporary — log position every 2 seconds
-    if (!window._lastLog || Date.now() - window._lastLog > 2000) {
-      const pos = character.getPosition();
-      console.log(`Position: x=${pos.x.toFixed(2)}, y=${pos.y.toFixed(2)}, z=${pos.z.toFixed(2)}`);
-      window._lastLog = Date.now();
-    }
-
     // Shadow camera follows player
     dirLight.position.set(pos.x + 5, pos.y + 10, pos.z + 5);
     dirLight.target.position.set(pos.x, pos.y, pos.z);
     dirLight.target.updateMatrixWorld();
   }
 
-  composer.render();
+  if (IS_MOBILE) renderer.render(scene, camera);   // post FX off on mobile (perf)
+  else           composer.render();
 }
 
 // ── Go ────────────────────────────────────────────────────────────────────────

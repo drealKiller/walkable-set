@@ -281,3 +281,104 @@ canvas#canvas {
 #music-controls button:hover {
   background: rgba(192,57,43,0.2);
 }
+
+/* ── TOUCH CONTROLS (mobile) ── */
+canvas#canvas { touch-action: none; }
+
+#touch-controls { display: none; }
+/* Show on touch devices, narrow (portrait) or short (landscape) screens */
+@media (max-width: 820px), (max-height: 520px), (pointer: coarse) {
+  #touch-controls { display: block; }
+}
+
+#joystick {
+  position: fixed; left: 22px; bottom: 26px;
+  width: 122px; height: 122px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.32);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(4px);
+  touch-action: none;
+  z-index: 120;
+}
+#joystick-knob {
+  position: absolute; left: 50%; top: 50%;
+  width: 54px; height: 54px; margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: rgba(192,57,43,0.55);
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 12px rgba(192,57,43,0.4);
+  transition: transform 0.05s linear;
+}
+
+#btn-run {
+  position: fixed; right: 26px; bottom: 40px;
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.42);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px; font-weight: 700; letter-spacing: 2px;
+  backdrop-filter: blur(4px);
+  touch-action: none;
+  z-index: 120;
+}
+#btn-run.active { background: var(--accent); color: #fff; }
+
+/* ── RESPONSIVE LAYOUT (mobile: narrow portrait OR short landscape) ── */
+@media (max-width: 820px), (max-height: 520px) {
+  /* Top bar — compact; drop track-skip buttons to declutter */
+  #hud-top { height: 42px; padding: 0 10px; }
+  #logo { font-size: 12px; letter-spacing: 1.5px; line-height: 1.05; }
+  #view-toggle { gap: 2px; padding: 2px; }
+  #view-toggle button { font-size: 11px; padding: 3px 8px; letter-spacing: 1px; }
+  #btn-prev, #btn-next { display: none; }
+
+  /* Section list — compact, height-capped + scroll so it never covers the controls */
+  #section-list {
+    width: 128px; top: 48px; right: 8px; padding: 7px;
+    border-radius: 8px; max-height: calc(100vh - 150px); overflow-y: auto;
+  }
+  .section-list-title { font-size: 9px; letter-spacing: 2px; margin-bottom: 6px; padding-bottom: 6px; }
+  .section-btn { font-size: 10px; padding: 5px 7px; margin-bottom: 2px; }
+
+  /* Keyboard hints replaced by the on-screen touch controls */
+  #controls-hint { display: none; }
+
+  /* Popup — small, bottom-centre above the joystick / RUN row */
+  #section-popup {
+    min-width: 0; width: calc(100vw - 24px); max-width: 320px;
+    left: 50%; right: auto; top: auto; bottom: 170px;
+    transform: translateX(-50%) translateY(10px);
+    padding: 9px 14px; border-radius: 10px;
+  }
+  #section-popup.visible { transform: translateX(-50%) translateY(0); }
+  #popup-tag { font-size: 9px; margin-bottom: 3px; }
+  #popup-title { font-size: 16px; margin-bottom: 4px; }
+  #popup-desc { font-size: 11px; line-height: 1.4; }
+
+  /* Loading screen text */
+  #loading-logo { font-size: 26px; letter-spacing: 3px; }
+  #loading-subtitle { font-size: 10px; }
+  #loading-hashtag { font-size: 12px; margin-bottom: 20px; }
+  #loading-bar-wrap { width: 200px; }
+}
+
+/* ── LANDSCAPE PHONES — keep the RUN button clear of the sections panel ── */
+@media (orientation: landscape) and (max-height: 520px) {
+  #joystick { width: 96px; height: 96px; left: 16px; bottom: 14px; }
+  #joystick-knob { width: 44px; height: 44px; margin: -22px 0 0 -22px; }
+  #btn-run { width: 62px; height: 62px; right: 18px; bottom: 16px; font-size: 13px; }
+
+  /* Panel ends well above the RUN button's corner */
+  #section-list { top: 44px; max-height: calc(100vh - 140px); }
+
+  /* Popup to the top-left — clears both the panel (right) and the controls (bottom) */
+  #section-popup {
+    left: 12px; right: auto; top: 44px; bottom: auto;
+    width: auto; max-width: 44vw;
+    transform: translateY(-8px);
+  }
+  #section-popup.visible { transform: translateY(0); }
+}

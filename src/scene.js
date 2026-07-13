@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createGLTFLoader } from './loaders.js';
 
 export function loadScene(renderer, onProgress) {
   return new Promise((resolve) => {
-    const loader = new GLTFLoader();
+    const loader = createGLTFLoader(renderer);   // Draco + KTX2 enabled
     // colliderMeshes: array of actual Mesh objects for precise raycast collision
     const colliderMeshes = [];
     let boothScene = null;
